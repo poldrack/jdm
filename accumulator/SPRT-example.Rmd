@@ -3,17 +3,22 @@ title: "SPRT example"
 author: "Russ Poldrack"
 date: "February 27, 2016"
 output: html_document
+runtime: shiny
 ---
 
-This code generates an example of Wald's sequential probability ratio test (SPRT). In this example, we will decide whether a noisy signal is moving either up or down.  First we need to define functions to compute the log likelihood ratio of two Gaussians, to generate data from a diffusion process, and to fit the SPRT to the data.  We will arbitrarily define 10 and -10 as the centers of the distributions for up and down motion, so that they are very well separated.
+This code generates an example of Wald's sequential probability ratio test (SPRT). In this example, we will decide whether a noisy signal is moving either up or down.  First we need to define functions to compute the log likelihood ratio of two Gaussians, to generate data from a diffusion process, and to fit the SPRT to the data.  We will arbitrarily define 1 and -1 as the centers of the distributions for up and down motion.
+
+*NOTE:* There will be a relatively long delay initially as well as after you change the slider settings, because the simulation must be re-run each time.
 
 ```{r, echo = FALSE,warnings=FALSE}
+require(ggplot2)
+source('multiplot.R')
 
-gauss_LLR <- function(xbar, sigma=1,mu=c(10,-10)) {
+gauss_LLR <- function(xbar, sigma=1,mu=c(1,-1)) {
 return(log(dnorm(xbar,mean=mu[1],sd=sigma)/dnorm(xbar,mean=mu[2],sd=sigma)))
 }
 
-mkdata <- function(drift=0.001,noise_sd=0.01,npts=1000) {
+mkdata <- function(drift=0.01,noise_sd=0.1,npts=1000) {
   
   d=array(data=NA,dim=npts)
   d[1]=rnorm(1)*noise_sd
@@ -61,36 +66,56 @@ fit_sprt <- function(d,alpha=0.05) {
         
 ```
 
+
 Now let's generate a number of trials and examine the trajectories along the distribution of finishing times.
 ```{r, echo = FALSE,warnings=FALSE}
 
-nruns=100
-npts=500
-sprt=matrix(data=NA,nrow=nruns,ncol=2)
-cumul=matrix(data=NA,nrow=nruns,ncol=npts)
-
-for (r in 1:nruns) {
-    d=mkdata(npts=npts)
-    sprt[r,]=fit_sprt(d)
-    cumul_data=cumulate(d)[1:sprt[r,2]]
-    cumul[r,1:sprt[r,2]]=cumul_data
-
+plot_sprt = function(drift) {
+  nruns=1000
+  npts=500
+  sprt=matrix(data=NA,nrow=nruns,ncol=2)
+  cumul=matrix(data=NA,nrow=nruns,ncol=npts)
+  
+  for (r in 1:nruns) {
+      d=mkdata(npts=npts,drift=drift)
+      sprt[r,]=fit_sprt(d)
+      cumul_data=cumulate(d)[1:sprt[r,2]]
+      cumul[r,1:sprt[r,2]]=cumul_data
+  
+  }
+  
+  df=data.frame(t(cumul))
+  df$index=c(1:npts)
+  
+  sprt_df=data.frame(resp=as.factor(sprt[,1]),rt=sprt[,2])
+  sprt_df_finished=sprt_df[!is.na(sprt_df$resp),]  # drop empty rows
+  h=ggplot(data=sprt_df_finished, aes(rt,colour=resp,fill=resp)) + geom_density(size=2,adjust=1/2,alpha=0.5) +  theme(axis.text.x=element_blank(),axis.text.y=element_blank(),axis.title.x=element_blank(),legend.position='top') + xlim(0,npts)
+  
+  
+  yrange=max(abs(range(cumul,na.rm=TRUE)))
+  nruns_to_show=min(20,nruns)
+  for (r in 1:nruns_to_show) {
+      goodpts=!is.na(cumul[r,])
+      tmpdf=data.frame(xdata=df$index[goodpts],ydata=cumul[r,goodpts])
+      if (r==1){ 
+          p=ggplot(data=tmpdf,aes(x=xdata,y=ydata))+geom_line() + xlim(0,npts)+  theme(axis.text.y=element_blank())+ylab('evidence')+xlab('timepoints')+ggtitle(sprintf('mean rt = %0.1f, accuracy=%0.3f, nonresponse=%0.3f',mean(sprt[sprt[,1]==1,2],na.rm=TRUE),mean(sprt[,1]==1,na.rm=TRUE),mean(is.na(sprt[,1]))))
+      } else {
+          p=p+geom_line(data=tmpdf,aes(x=xdata,y=ydata))
+          #lines(cumul[r,])
+      }
+  }
+  multiplot(h, p)
 }
+```
 
-par(mfrow=c(2,1))
+```{r, echo = FALSE,warnings=FALSE}
 
-h=hist(sprt[,2],breaks=seq(0,npts,10),plot=FALSE)
-plot(h$breaks[2:length(h$breaks)],h$density,type='l',xlab = NULL)
-
-yrange=max(abs(range(cumul,na.rm=TRUE)))
-nruns_to_show=100
-for (r in 1:nruns_to_show) {
-    if (r==1){ 
-      plot(cumul[r,],type='l',ylim=c(-1*yrange,yrange))
-    } else {
-        lines(cumul[r,])
-    }
-}
+inputPanel(
+      sliderInput("drift_rate", "drift rate:",
+                  min=0.0005, max=0.03, value=0.005,step=0.0005))
+renderPlot({
+  plot_sprt(input$drift_rate)
+  })
 
 
 ```
