@@ -1,0 +1,50 @@
+---
+title: "SignalDetectionTheory"
+author: "Russ Poldrack"
+date: "February 27, 2016"
+output: html_document
+runtime: shiny
+---
+
+
+```{r, echo = FALSE,warnings=FALSE}
+require(MESS)
+inputPanel(
+      sliderInput("dprime", "d-prime:",
+                  min=0, max=5, value=1,step=0.1),
+    sliderInput("criterion", "criterion:",
+                  min=-5, max=5, value=1,step=0.1),
+    sliderInput("noisesd", "noise SD:",
+                  min=1, max=5, value=1,step=0.1))
+
+renderPlot({
+    x <- seq(-10, 10, length=1000)
+    hx <- dnorm(x,sd=input$noisesd)
+    
+    hxp <- dnorm(x,mean=input$dprime)
+    par(mfrow=c(1,2))
+    plot(x,hxp,col='red',type='l',ylab='density',lwd=2)
+    lines(x,hx,col='blue',lwd=2)
+    lines(c(input$criterion,input$criterion),c(0,1),lwd=2,col='black')
+    legend('topleft',legend=c('signal','noise','criterion'),
+           lwd=2,col=c('red','blue','black'))
+
+        crit=seq(-5,5,0.01)
+    fa=c()
+    hits=c()
+    for (c in crit) {
+      fa=rbind(fa,1-pnorm(c,sd=input$noisesd))
+      hits=rbind(hits,1-pnorm(c,mean=input$dprime))
+    }
+    area_under_curve=auc(fa,hits)
+    plot(seq(0,1,0.01),seq(0,1,0.01),type='l',col='black',xlab='false alarms',
+         ylab='hits',lwd=2,main=sprintf('AUC=%0.3f',area_under_curve))
+    
+    lines(fa,hits,col='red',lwd=2)
+    points(1-pnorm(input$criterion,sd=input$noisesd),1-pnorm(input$criterion,mean=input$dprime),
+           col='red',pch=19,cex=2)
+  })
+
+
+```
+
