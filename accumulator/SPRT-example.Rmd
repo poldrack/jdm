@@ -1,0 +1,96 @@
+---
+title: "SPRT example"
+author: "Russ Poldrack"
+date: "February 27, 2016"
+output: html_document
+---
+
+This code generates an example of Wald's sequential probability ratio test (SPRT). In this example, we will decide whether a noisy signal is moving either up or down.  First we need to define functions to compute the log likelihood ratio of two Gaussians, to generate data from a diffusion process, and to fit the SPRT to the data.  We will arbitrarily define 10 and -10 as the centers of the distributions for up and down motion, so that they are very well separated.
+
+```{r, echo = FALSE,warnings=FALSE}
+
+gauss_LLR <- function(xbar, sigma=1,mu=c(10,-10)) {
+return(log(dnorm(xbar,mean=mu[1],sd=sigma)/dnorm(xbar,mean=mu[2],sd=sigma)))
+}
+
+mkdata <- function(drift=0.001,noise_sd=0.01,npts=1000) {
+  
+  d=array(data=NA,dim=npts)
+  d[1]=rnorm(1)*noise_sd
+  for (i in 2:npts){
+    d[i]=drift+rnorm(1)*noise_sd
+  }
+  return(d)
+}
+
+cumulate <- function(d) {
+  cumul=array(NA,dim=length(d))
+  cumul[1]=d[1]
+  for (i in 2:length(d)){
+    cumul[i]=sum(d[1:i])
+  }
+ return(cumul) 
+}
+
+
+fit_sprt <- function(d,alpha=0.05) {
+  # define acceptable specificity and sensitivity
+   # alpha is likelihood of deciding A when A is true
+  beta=1.-alpha # likelihood of deciding B when B is true
+  
+  A=log(beta/alpha)
+  B=log((1.-beta)/(1.-alpha))
+  
+  npts=length(d)
+  ll=c()
+  outcome=NA
+  for (i in 1:npts) {
+    ll=rbind(ll,gauss_LLR(d[i]))
+    S=sum(ll)
+    if (S>A) {
+      outcome=1
+      break
+    } else if (S<B) {
+      outcome=-1
+      break
+    }
+  }
+  return(c(outcome,i))
+}
+
+        
+```
+
+Now let's generate a number of trials and examine the trajectories along the distribution of finishing times.
+```{r, echo = FALSE,warnings=FALSE}
+
+nruns=100
+npts=500
+sprt=matrix(data=NA,nrow=nruns,ncol=2)
+cumul=matrix(data=NA,nrow=nruns,ncol=npts)
+
+for (r in 1:nruns) {
+    d=mkdata(npts=npts)
+    sprt[r,]=fit_sprt(d)
+    cumul_data=cumulate(d)[1:sprt[r,2]]
+    cumul[r,1:sprt[r,2]]=cumul_data
+
+}
+
+par(mfrow=c(2,1))
+
+h=hist(sprt[,2],breaks=seq(0,npts,10),plot=FALSE)
+plot(h$breaks[2:length(h$breaks)],h$density,type='l',xlab = NULL)
+
+yrange=max(abs(range(cumul,na.rm=TRUE)))
+nruns_to_show=100
+for (r in 1:nruns_to_show) {
+    if (r==1){ 
+      plot(cumul[r,],type='l',ylim=c(-1*yrange,yrange))
+    } else {
+        lines(cumul[r,])
+    }
+}
+
+
+```
