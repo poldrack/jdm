@@ -1,0 +1,142 @@
+---
+title: "roulette"
+author: "Russ Poldrack"
+date: "February 28, 2016"
+output: html_document
+runtime: shiny
+---
+
+This notebook simulates a simplified version of the game of roulette. The goal is to understand the various ways in which risk attitudes and value functions might make the game attractive to an individual.
+
+First, let's simulate the outcome from 100 spins, doing this 1000 times and looking at the distribution of total gain/loss outcomes.
+
+```{r, echo=FALSE,warnings=FALSE}
+library(ggplot2)
+
+roulette_spin = function() {
+  npockets=c(18,18,2)
+  roll=sample(1:sum(npockets),1)
+  if (roll < npockets[1]) {
+    color=0
+  } else if (roll < sum(npockets[1:2])) {
+    color=1
+  } else {color=2}
+  return(c(roll,color))
+}
+```
+
+```{r, echo=FALSE,warnings=FALSE}
+
+source("../accumulator/multiplot.R")
+
+outcome=c()
+first_win=c()
+
+bet_value=1
+bet=0  # bet on specific pocket every time - 35X payoff
+payoff=35 # payoff for single pocket bet
+nruns=1000
+nplays=100 # how many games played at one sitting
+p_payoff=1/38.
+
+print(sprintf('Expected value of $1 bet = p(outcome)*u(outcome) = $%0.2f',-1*bet_value*(1-p_payoff) + payoff*p_payoff))
+
+for (i in 1:nruns) {
+    o=c() # spint outputs
+    fw=-1 # number of spins to first win 
+    for (j in 1:nplays) {
+      sp=roulette_spin()
+      if (payoff==sp[1] & fw<0){
+        fw=j
+      }
+      o=rbind(o,payoff*bet_value*(payoff==sp[1]) - bet_value)
+    }
+    first_win=rbind(first_win,fw)
+    outcome=rbind(outcome,sum(o))
+}
+
+print(sprintf('Mean outcome over %d bets (on $%0.2f bet): $%0.2f (range: $%0.2f - $%0.2f)',
+      nplays,bet_value,mean(outcome),min(outcome),max(outcome)))
+
+df=data.frame(first_win=first_win,outcome=outcome,row.names=c(1:length(outcome)))
+h1=ggplot(data=df, aes(outcome)) + aes(y = ..density..) + geom_histogram(binwidth=10) + xlab(sprintf('Winnings after %d plays',nruns))
+h2=ggplot(data=df, aes(first_win)) + aes(y = ..density..) + geom_histogram(binwidth=2) + xlab(sprintf('Number of plays to first win (-1:no wins)',nruns))
+
+multiplot(h1,h2)
+```
+
+
+
+Now let's see how change in the utilty function and probability weighting function change the attractiveness of the bet. We use a prospect theory model with a power utility function and a one-parameter (Prelec) weighting function. Default values are from Table 11.3 in the Fox & Poldrack Neuroeconomics chapter
+
+```{r, echo=FALSE,warnings=FALSE}
+pi = function(p,gamma) {
+  return(exp(-1*(-1*log(p))**gamma))
+}
+
+plot_value_function = function(input){
+    alpha=input$alpha
+    bet_value=input$bet_value
+    lam=input$lambda
+    payoff=35
+    gamma=input$gamma
+    p_payoff=1/38
+    print(input)
+    bet_max=1000
+    beta=alpha # use same weighting for gains and losses
+    o=seq(0,bet_max,1)
+    v_o=o^alpha
+    eu=((bet_value*payoff)^alpha)*pi(p_payoff,gamma) - lam*(bet_value^beta)
+    betvalstring=sprintf('Expected value of $%d bet = $%0.2f',bet_value,eu)
+
+
+    plot(o,v_o,type='l',col='blue',xlim=c(-1*bet_max,bet_max),ylim=c(-1*bet_max,bet_max),lwd=2,main=betvalstring)
+    
+    lines(-1*o,-1*v_o*lam,col='blue',type='l',xlim=c(-1*bet_max,bet_max),ylim=c(-1*bet_max,bet_max),lwd=2)
+    lines(o,o,type='l')
+    lines(-1*o,-1*o,type='l')
+    lines(c(-bet_max,bet_max),c(0,0))
+    points(bet_value,bet_value^alpha,col='red',pch=19,cex=2)
+
+#     plt.axis([-1*bet_max,bet_max,-1*bet_max,bet_max])
+#     plt.plot(o,o,color='black')
+#     plt.plot([-1*bet_max,bet_max],[0,0])
+#     plt.plot(-1*o,-1*o,color='black')
+# 
+#     plt.plot(bet_value,bet_value**alpha,marker='o',color='red')
+# 
+
+}
+
+plot_weighting_function = function(gamma){
+    x=seq(0,1,0.001)
+    plot(x,pi(x,input$gamma),type='l',col='blue',lwd=3)
+    lines(x,x,type='l')
+
+}
+
+```
+
+```{r, echo=FALSE,warnings=FALSE}
+inputPanel(
+
+  sliderInput("bet_value", label = "Amount of bet",
+              min = 1, max = 1000, value = 10, step = 1),
+  sliderInput("lambda", label = "lambda (loss aversion coefficient)",
+              min = 0.01, max = 6.0, value = 2.0, step = 0.01),
+  sliderInput("alpha", label = "alpha (curvature of value function)",
+              min = 0.0, max = 2.0, value = 0.88, step = 0.01),
+  sliderInput("gamma", label = "gamma (curvature of probability weighting function)",
+              min = 0.01, max = 0.99, value = 0.74, step = 0.01)
+)
+
+renderPlot({
+  par(mfrow=c(1,2))
+  plot_value_function(input)
+  plot_weighting_function(input$gamma)
+  })
+```
+
+
+
+
