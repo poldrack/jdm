@@ -1,0 +1,88 @@
+---
+title: "Intertemporal choice and temporal discounting"
+author: "Russ Poldrack"
+date: "March 5, 2016"
+output: html_document
+runtime: shiny
+---
+
+This notebook explores temporal discounting in intertemporal choice. First we will compare exponential and hyperbolic discounting functions.
+
+```{r, echo=FALSE}
+
+inputPanel(
+  sliderInput("k", label = "k (hyperbolic discount rate)",min = 0.001, max = 0.2, value = 0.1, step = 0.001),
+  sliderInput("delta", label = "delta (exponential discount rate)",min = 0.8, max = 1.0, value = 0.95, step = 0.01)
+  )
+
+renderPlot({
+    t=seq(0,30)
+
+    v=10
+    k=input$k
+    delta=0.95
+    v_d_hyp=v/(1+k*t)
+    v_d_exp=v*(input$delta^t)
+    plot(t,v_d_hyp,type='l',ylim=c(0,10),xlim=c(30,0),xlab='Delay (days)',ylab='Discounted value',lwd=2)
+    lines(t,v_d_exp,col='red',lwd=2)
+    legend('topleft',legend=c('hyperbolic','exponential'),col=c('blue','red'),
+           lwd=c(2,2))
+
+ })
+
+ renderUI({
+    t=seq(0,30)
+
+    v=10
+    k=input$k
+    delta=0.95
+    v_d_hyp=v/(1+k*t)
+    v_d_exp=v*(input$delta^t)
+    
+    HTML(paste('<b>Declining impatience under hyperbolic:</b>',
+               sprintf('8-1: %0.3f',v_d_hyp[1]/v_d_hyp[8]),
+               sprintf('15-8: %0.3f',v_d_hyp[8]/v_d_hyp[15]),
+               '<b>Constant impatience under exponential:</b>',
+               sprintf('8-1: %0.3f',v_d_exp[1]/v_d_exp[8]),
+               sprintf('15-8: %0.3f',v_d_exp[8]/v_d_exp[15]), sep = '<br/>'))
+
+  })
+```
+
+Now let's look at how hyperbolic discounting results in preference reversals over time.  We plot two lines, one for a larger-later reward and one for a smaller-sooner reward.  
+
+```{r, echo=FALSE}
+
+inputPanel(
+  sliderInput("discrate", label = "k (hyperbolic discount rate)",min = 0.001, max = 0.2, value = 0.1, step = 0.001),
+  sliderInput("expdisc", label = "delta (exponential discount rate)",min = 0.8, max = 1.0, value = 0.95, step = 0.01),
+  sliderInput("delay", label = "delay (difference in days between smaller-sooner and larger-later)",min = 0, max = 15, value = 4, step = 1),
+  sliderInput("ssval", label = "value of smaller-sooner (LL=10)",min = 0, max = 10, value = 8, step = 1),
+  radioButtons("disctype", label = h3("Type of discounting"),
+    choices = list("Hyperbolic" = 1, "Exponential" = 2), 
+    selected = 1)
+  )
+
+renderPlot({
+  delta=input$delay  # distance in days between smaller-sooner and larger-later
+  ss_val=input$ssval
+
+  t=seq(0,30)
+  v=10 # fixed initial value
+
+  if (input$disctype == 1) {
+    v_d=v/(1+input$discrate*t)
+    v_d_t2=ss_val/(1+input$discrate*t)
+  } else {
+    v_d=v*(input$expdisc^t)
+    v_d_t2=ss_val*(input$expdisc^t)
+  }
+  plot(t,v_d,type='l',ylim=c(0,10),xlim=c(30,0),xlab='Delay (days)',ylab='Discounted value',col='blue',lwd=2)
+  lines(t[(delta+1):length(t)],v_d_t2[1:(length(t)-delta)],col='red',lwd=2)
+#    legend('topleft',legend=c('hyperbolic','exponential'),col=c('blue','red'),lwd=c(2,2))
+  legend('topleft',legend=c('larger-later','smaller-sooner'),col=c('blue','red'),
+           lwd=c(2,2))
+ })
+
+```
+
