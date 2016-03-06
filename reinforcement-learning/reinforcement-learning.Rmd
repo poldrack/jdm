@@ -1,0 +1,84 @@
+---
+title: "reinforcement learning example"
+author: "Russ Poldrack"
+date: "March 6, 2016"
+output: html_document
+runtime: shiny
+---
+
+This notebook provides an example of a simple reinforcement learning algorithm. In this case, the learner has to decide between two actions, which are probabilistically reinforced. We will start with a simple Rescorla-Wagner learner.  Here we will assume that one of the actions (#1) is the optimal response (with reinforcement probability pA).
+
+```{r, echo=FALSE,warnings=FALSE,message=FALSE}
+
+softmax = function(q,temp) {
+        p=exp(q[1]/temp)/(exp(q[1]/temp)+exp(q[2]/temp))
+        if (p>runif(1)) {
+          return(1)
+        } else {
+          return(2)
+        }
+}
+
+outcome = function(resp,p_A) {
+  if (runif(1) < p_A) {
+    rewarded_outcome=1
+  } else {rewarded_outcome=2}
+  if (resp==rewarded_outcome) {
+    return(1)
+  } else {return(0)}
+}
+
+learning_model = function(pA,learning_rate,temperature) {
+  ntrials=1000
+  q=c(0,0)
+  resp=array(dim=ntrials)
+  reward=array(dim=ntrials)
+  correct=array(dim=ntrials)
+  
+  for (i in 1:ntrials) {
+    resp[i]=softmax(q,temperature)
+    reward[i]=outcome(resp[i],pA)
+    correct[i]=resp[i]==round(pA)
+    q[resp[i]]=q[resp[i]] + learning_rate*(reward[i]-q[resp[i]])
+  }
+  
+  return(list('resp'=resp,'reward'=reward,'correct'=correct))
+}
+
+plot_learning=function(pA,learning_rate,temperature){
+  
+  model=learning_model(pA,learning_rate,temperature)
+  
+  blocksize=10 # size of blocks to break down performance
+  nblocks=round(length(model$resp)/blocksize)
+  block_optimal=array(dim=nblocks)
+  for (i in 1:nblocks) {
+    block_trials=seq(i*blocksize,(i+1)*blocksize-1)
+    block_optimal[i]=mean(model$resp[block_trials]==round(pA))
+  }
+  plot(block_optimal,type='l',xlab=sprintf('trial blocks (%d trials/block)',blocksize),
+       ylab='proportion optimal responses')
+  tp=seq(1,length(block_optimal))
+  block_optimal_loess = loess(y ~ x, span=0.75, data.frame(x=tp, y=block_optimal))
+  lines(predict(block_optimal_loess, data.frame(x=tp)),col='red',lwd=2)
+                              
+}
+```
+
+
+```{r, echo=FALSE,warnings=FALSE,message=FALSE}
+inputPanel(
+
+  sliderInput("pA", label = "p(reward|correct)",
+              min = 0.5, max = 1, value = 0.8, step = 0.1),
+  sliderInput("learning_rate", label = "Learning rate",
+              min = 0, max = 0.01, value = 0.001, step = 0.0001),
+  sliderInput("temperature", label = "Softmax temperature",
+              min = 0.001, max = 0.999, value = 0.1, step = 0.001)
+)
+
+renderPlot({
+  plot_learning(input$pA,input$learning_rate,input$temperature)
+  })
+```
+
