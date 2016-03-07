@@ -1,0 +1,132 @@
+---
+title: "hothand"
+author: "Russ Poldrack"
+date: "March 6, 2016"
+output: html_document
+---
+
+This notebook provides an example of the difficulties that humans exhibit in distinguishing random from nonrandom outcomes.
+
+First we define a function to generate a random series of free throws with a particular likelihood of success. We also provide the ability to generate a series that is streakier than random (using an autoregressive process) or one that is less streaky than random (by randomly inserting switches in the timeseries).
+
+
+```{r, echo=FALSE}
+mk_random=function(nshots,psuccess=0.5,ar=0.0,pswitch=0){
+  
+    if (ar==0 && pswitch==0) {
+        r=runif(nshots)
+    } else if (ar>0) {
+        # generate random timeseries using autoregressive model
+        r=array(dim=nshots)
+        r[1]=runif(1)
+        for (i in 2:nshots)
+            r[i]=r[i-1]*ar + runif(1)*(1-ar)
+            # make sure it's within bounds
+            if (r[i]>1){
+                r[i]=1
+            } else if (r[i]<0) {
+                r[i]=0
+            }
+      
+    } else {
+        # generate "super-random" series by flipping 
+        r=array(dim=nshots)
+        r[1]=runif(1)
+        for (i in 2:nshots) {
+            if (runif(1)<pswitch) {
+                r[i]=abs(1-r[i-1])
+            } else {
+                r[i]=runif(1)
+            }
+        }
+    }
+  
+    return(as.logical(r<psuccess))
+}
+
+
+```
+
+Generate a large number of sequences, and plot the histogram of run lengths
+
+```{r echo=FALSE}
+nruns=10000
+nshots=25
+runlengths_rand=c()
+data_rand=matrix(nrow=nruns,ncol=nshots)
+
+for (i in 1:nruns) {
+    s=mk_random(nshots)
+    for (l in rle(s)$lengths) {
+      runlengths_rand=c(runlengths_rand,l)
+    }
+    data_rand[i,]=s
+}
+
+runlengths_ar=c()
+data_ar=matrix(nrow=nruns,ncol=nshots)
+
+for (i in 1:nruns) {
+    s=mk_random(nshots,ar=0.8)
+    for (l in rle(s)$lengths) {
+      runlengths_ar=c(runlengths_ar,l)
+    }
+    data_ar[i,]=s
+}
+
+
+runlengths_switch=c()
+data_switch=matrix(nrow=nruns,ncol=nshots)
+
+for (i in 1:nruns) {
+    s=mk_random(nshots,pswitch=0.5)
+    for (l in rle(s)$lengths) {
+      runlengths_switch=c(runlengths_switch,l)
+    }
+    data_switch[i,]=s
+}
+      
+bins=seq(0.5,max(runlengths_ar)+1.5,1)
+h_rand=hist(runlengths_rand,breaks=bins,plot=FALSE)
+h_ar=hist(runlengths_ar,breaks=bins,plot=FALSE)
+h_switch=hist(runlengths_switch,breaks=bins,plot=FALSE)
+
+plot(bins[1:(length(bins)-1)],h_rand$density,type='l',lwd=2,col='red',ylim=c(0,1),xlab='Run length',ylab='Probability')
+lines(bins[1:(length(bins)-1)],h_ar$density,type='l',lwd=2,col='green')
+lines(bins[1:(length(bins)-1)],h_switch$density,type='l',lwd=2,col='blue')
+legend('topright',legend = c('random','AR','switching'),col=c('red','green','blue'),lwd=2)
+```
+
+Let's see how well we can detect runs using the standard statistical approach (runs test)
+
+```{r echo=FALSE}
+library(randtests)
+library(knitr)
+
+runstest_rand=c()
+
+for (i in 1:nruns){
+  r=runs.test(as.numeric(data_rand[i,]),threshold=0.5)
+  runstest_rand=c(runstest_rand,r$p.value)
+}
+
+runstest_ar=c()
+
+for (i in 1:nruns){
+  r=runs.test(as.numeric(data_ar[i,]),threshold=0.5)
+  runstest_ar=c(runstest_ar,r$p.value)
+}
+
+runstest_switch=c()
+
+for (i in 1:nruns){
+  r=runs.test(as.numeric(data_switch[i,]),threshold=0.5)
+  runstest_switch=c(runstest_switch,r$p.value)
+}
+knit_print('Probability of rejecting null hypothesis of random generation')
+sigp=c(mean(runstest_rand<0.05,na.rm=TRUE),
+       mean(runstest_ar<0.05,na.rm=TRUE),
+       mean(runstest_switch<0.05,na.rm=TRUE))
+sigp_df=as.data.frame(sigp,row.names=c('random','AR','switching'))
+kable(sigp_df)
+```
