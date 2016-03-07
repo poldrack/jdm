@@ -1,0 +1,63 @@
+---
+title: "Gamblers Ruin"
+author: "Russ Poldrack"
+date: "March 7, 2016"
+output: html_document
+runtime: shiny
+---
+
+This document provides an example of the problem of "gamblers ruin", which demonstrates a problem for motivating utility maximization using the law of large numbers.  This notebook simulates how many times one would need to play a positive-value lottery in order to come out ahead.  
+
+
+```{r, echo=FALSE}
+inputPanel(
+
+  sliderInput("pwinexp", label = "Probability of winning the lottery (10e-x)",
+              min = 1, max = 9, value = 3, step = 1),
+  sliderInput("costperplay", label = "Cost to play the lottery",
+              min = 1, max = 10, value = 1, step = 1),
+  sliderInput("nplayers", label = "Number of players",
+              min = 1, max = 1000, value = 100, step = 1)
+  
+)
+
+play_lottery=function(pwin,costperplay,nplayers,maxplays=100000){
+  prewinloss=c()
+  nwinners=0
+  for (i in 1:nplayers) {
+    win=0
+    p=0
+    while (win==0 && p<maxplays){
+      p=p+1
+      if (runif(1)<pwin) {
+        win=1
+      }
+    }
+    nwinners=nwinners+win
+    prewinloss=c(prewinloss,p*costperplay)
+  }
+  return(list('prewinloss'=prewinloss,'nwinners'=nwinners,'maxplays'=maxplays,'nplayers'=nplayers))
+}
+
+dataInput <- reactive({
+  p=play_lottery(10^(-1*input$pwinexp),input$costperplay,input$nplayers)
+  return(p)
+})
+
+renderPlot({
+  i=dataInput()
+  hist(i$prewinloss)
+  })
+
+renderUI({
+   i=dataInput()
+
+    HTML(sprintf('Maximum loss before winning: %0.2f<br>',max(i$prewinloss)),
+         sprintf('Minimum loss before winning: %0.2f<br>',min(i$prewinloss)),
+         sprintf('Proportion of winners after maximum of %d plays: %0.2f<br>',i$maxplays,i$nwinners/i$nplayers),
+         sep = '<br/>')
+
+  })
+
+```
+
