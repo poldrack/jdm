@@ -1,0 +1,46 @@
+---
+title: "RL-fitting"
+author: "Russ Poldrack"
+date: "March 6, 2016"
+output: html_document
+---
+
+This notebook examines the ability of maximum likelihood estimation to accurately estimate the parameters of a reinforcement learning model.
+
+```{r, echo=FALSE,warnings=FALSE,message=FALSE}
+source('RL-helpers.R')
+library(knitr)
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE}
+
+nruns=100
+estimates=c()
+truevals=c()
+failcounter=0
+for (i in 1:nruns) {
+  beta=runif(1)*20+0.1
+  lr=runif(1)*0.2+0.001
+  prob=0.8
+  g=generate_data(lr,beta,prob)
+  mlest=nlm(q_negloglike,p=c(0.0001,0.0001),g=g)
+  if (mlest$code<3) {
+    estimates=rbind(estimates,mlest$estimate)
+    truevals=rbind(truevals,c(lr,beta))
+  }  else {failcounter = failcounter+1}
+}
+knit_print(sprintf('MLE failed on %d or %d runs',failcounter,nruns))
+
+result_table=as.data.frame(c(cor(estimates[,1],truevals[,1]),cor(estimates[,2],truevals[,2])),row.names=c('learning_rate','beta'))
+names(result_table)=c('cor(true,estimated)')
+
+knit_print('Correlation between true and estimated parameters')
+kable(result_table)
+
+par(mfrow=c(1,2))
+plot(truevals[,1],estimates[,1],main='learning rate',xlab='true',ylab='estimated')
+plot(truevals[,2],estimates[,2],main='beta',xlab='true',ylab='estimated')
+
+```
