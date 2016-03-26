@@ -1,0 +1,70 @@
+---
+title: "bandit_task"
+author: "Russ Poldrack"
+date: "March 19, 2016"
+output: html_document
+runtime: shiny
+---
+
+Press each button in order to determine which provides the highest reward rate.
+```{r,echo=FALSE}
+library(shiny)
+
+ui <- fluidPage(
+  actionButton("bA", label = "Bandit 1"),
+actionButton("bB", label = "Bandit 2"),
+actionButton("bC", label = "Bandit 3"),
+actionButton("bD", label = "Bandit 4"),
+  hr(),
+  plotOutput("plot",height=300,width=400)
+)
+
+server <- function(input, output){
+  v <- reactiveValues(pvals=c(0.6,0.8,0.2,0.4),reward=0,counter=0,choices=c())
+
+    observeEvent(input$bA, {
+      v$choices=c(v$choices,1)
+      v$counter=v$counter+1
+      if (runif(1) < v$pvals[1] && v$counter<101) {
+            v$reward=v$reward + 1
+      }
+    })
+  
+    observeEvent(input$bB, {
+      v$choices=c(v$choices,2)
+      v$counter=v$counter+1
+      if (runif(1) < v$pvals[2] && v$counter<101) {
+            v$reward=v$reward + 1
+      }
+    })
+    observeEvent(input$bC, {
+       v$choices=c(v$choices,3)
+     v$counter=v$counter+1
+      if (runif(1) < v$pvals[3] && v$counter<101) {
+            v$reward=v$reward + 1
+      }
+    })
+    observeEvent(input$bD, {
+       v$choices=c(v$choices,4)
+     v$counter=v$counter+1
+      if (runif(1) < v$pvals[4] && v$counter<101) {
+            v$reward=v$reward + 1
+      }
+    })
+   
+    output$plot <- renderPlot({
+      maxtrials=20
+      if(v$counter<(maxtrials+1)) {
+        barplot(c(v$reward),ylim=c(0,maxtrials))
+      } else {
+        par(mfrow=c(1,2),pin=c(2,2))
+        barplot(c(v$reward),ylim=c(0,maxtrials),main=sprintf('Done! Total reward after %d trials: %d',maxtrials,v$reward))
+        plot(v$pvals[v$choices],ylim=c(0,1))
+        
+      }
+    })
+
+
+}
+shinyApp(ui, server)
+```

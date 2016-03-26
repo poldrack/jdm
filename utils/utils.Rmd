@@ -1,0 +1,51 @@
+---
+title: "utility functions"
+author: "Russ Poldrack"
+date: "March 7, 2016"
+output: html_document
+runtime: shiny
+---
+
+
+
+```{r, echo=FALSE}
+
+inputPanel(
+  sliderInput("gamma", label = "utility function concavity",min = 0.5, max = 1, value = 0.9, step = 0.01)
+)
+
+renderPlot({
+  
+  d=seq(0,10000,10)
+  gamma=input$gamma
+  v1=2000^gamma
+  v2=4000^gamma - 2000^gamma
+  v3=10000^gamma - 8000^gamma
+  plot(d,d^gamma,type='l',ylim=c(0,1.1*(10000^gamma)))
+  lines(c(0,2000),c(2000^gamma,2000^gamma))
+  text(0,v1/2,sprintf('%0.1f',v1),adj=0)
+  text(0,(v1+v2)-(v2/2),sprintf('%0.1f',v2),adj=0)
+  text(0,10000^gamma-v3/2,sprintf('%0.1f',v3),adj=0)
+  
+  lines(c(0,4000),c(4000^gamma,4000^gamma))
+  lines(c(0,8000),c(8000^gamma,8000^gamma))
+  lines(c(0,10000),c(10000^gamma,10000^gamma))
+
+})
+
+ renderUI({
+    gamma=input$gamma
+    v1=2000^gamma
+    v2=4000^gamma - 2000^gamma
+    v3=10000^gamma - 8000^gamma
+
+    HTML(paste('<b>Differences in utilty:</b>',
+               sprintf('u(2000)-u(0): %0.1f',v1),
+               sprintf('u(4000)-u(2000): %0.1f',v2),
+               sprintf('u(10000)-u(8000): %0.1f',v3), sep = '<br/>'))
+
+  })
+
+
+```
+

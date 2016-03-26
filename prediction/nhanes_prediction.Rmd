@@ -1,0 +1,108 @@
+---
+title: "NHANES_analysis"
+author: "Russ Poldrack"
+date: "March 25, 2016"
+output: html_document
+runtime: shiny
+---
+
+This workbook will analyze the National Health and Nutrition Examination Survey (NHANES) to give intuitions regarding actuarial assessment.  
+
+```{r, echo=FALSE}
+# from http://stackoverflow.com/questions/9341635/check-for-installed-packages-before-running-install-packages
+is.installed <- function(mypkg){
+    is.element(mypkg, installed.packages()[,1])
+  } 
+
+# check if package "NHANES" is installed
+if (!is.installed("NHANES")){
+    install.packages("NHANES")
+}
+library(NHANES)
+data(NHANES)
+
+# random split of NHANES data into train and test halves
+randsamp=sample(dim(NHANES)[1])
+NHANES_train=subset(NHANES,subset=c(1:dim(NHANES)[1]) %in% randsamp[1:dim(NHANES)[1]/2])
+NHANES_test=subset(NHANES,subset=c(1:dim(NHANES)[1]) %in% randsamp[(dim(NHANES)[1]/2+1):dim(NHANES)[1]])
+
+```
+
+
+```{r, echo=FALSE}
+inputPanel(
+  
+  checkboxGroupInput("Xvariables", label = "X variables to include:",
+              c("Age"="Age","Education"="Education",
+                "Hours of sleep per night"="SleepHrsNight","Household Income"="HHIncomeMid",
+                'Physical activity'="PhysActiveDays",
+                "Alcohol intake"="AlcoholDay",
+                "Current smoker"="SmokeNow","Diabetes"="Diabetes",
+                "TV watching"="TVHrsDay","Ever used hard drugs"="HardDrugs",
+                'Body Mass Index (BMI)'='BMI'
+                ),selected=c("Age","Education","SleepHrsNight",
+                             "HHIncomeMid",'PhysActiveDays',
+                             "AlcoholDay","SmokeNow","Diabetes","TVHrsDay",
+                             'BMI','HardDrugs')),
+  selectInput('Yvariable',label='Y variable', choices=c("General health"="HealthGen",
+                    'Days of bad physical health (last month)'='DaysPhysHlthBad',
+                    'Days of bad mental health (last month)'='DaysMentHlthBad',
+                    'Depression'='Depressed',
+                    'Diastolic blood pressure'='BPDiaAve'))
+  
+)
+
+dataInput <- reactive({
+  if ( is.null(input$Yvariable) | is.null(input$Xvariables)) {return(NULL)}
+
+  varfields=c()
+  for (v in input$Xvariables) {
+      varfields=c(varfields, sprintf('as.numeric(%s)',v))
+    }
+  yvar=sprintf('as.numeric(%s)',input$Yvariable)
+  frmla=as.formula(paste(yvar, paste(varfields, sep = "", 
+                        collapse = " + "), sep = " ~ "))
+  
+  # set up model for training
+  # some of the variables are counts, which require Poisson regression
+  gaussian_vars=c('BPDiaAve','HealthGen')
+  if (input$Yvariable %in% gaussian_vars) {fam=gaussian()} else {fam=poisson()}
+  
+  lm.result=glm(frmla,data=NHANES_train,family=fam)
+  lm.summary=summary(lm.result)
+  pred_insample=predict(lm.result,NHANES_train)
+  predlm_insample=lm(as.numeric(pred_insample) ~ as.numeric(NHANES_train[,input$Yvariable]))
+  
+  pred=predict(lm.result,NHANES_test)
+  predlm=lm(as.numeric(pred) ~ as.numeric(NHANES_test[,input$Yvariable]))
+  rsq=summary(predlm)$r.squared
+  
+  d=list('frmla'=frmla,'lm.result'=lm.result,'rsq'=rsq,'pred'=pred,'lm.summary'=lm.summary,
+         'pred_insample'=pred_insample,'predlm'=predlm,'predlm_insample'=predlm_insample)
+  return(d)
+})
+
+renderPlot({
+  d=dataInput()
+  if (! is.null(d)) {
+    print(d$frmla)
+    print(d$lm.summary)
+    print(d$rsq)
+  
+    # plot in-sample predicted vs. actual
+    par(mfrow=c(1,2))
+    plot(as.numeric(NHANES_train[,input$Yvariable]),d$pred_insample,main=sprintf('in-sample rsquared=%0.2f',summary(d$predlm_insample)$r.squared),xlab=input$Yvariable,ylab='predicted value')
+       #xlim=c(min(as.numeric(NHANES_train[,input$Yvariable]),na.rm=TRUE),max(as.numeric(NHANES_train[,input$Yvariable]),na.rm=TRUE)),ylim=c(min(as.numeric(NHANES_train[,input$Yvariable]),na.rm=TRUE),max(as.numeric(NHANES_train[,input$Yvariable]),na.rm=TRUE)))
+  abline(d$predlm_insample)
+  plot(as.numeric(NHANES_test[,input$Yvariable]),d$pred,main=sprintf('out-of-sample rsquared=%0.2f',d$rsq),xlab=input$Yvariable,ylab='predicted value')
+       #xlim=c(min(as.numeric(NHANES_test[,input$Yvariable]),na.rm=TRUE),max(as.numeric(NHANES_test[,input$Yvariable]),na.rm=TRUE)),ylim=c(min(as.numeric(NHANES_test[,input$Yvariable]),na.rm=TRUE),max(as.numeric(NHANES_test[,input$Yvariable]),na.rm=TRUE)))
+  abline(d$predlm)
+
+  }
+ })
+  
+renderTable(summary(dataInput()$lm.result)) 
+
+
+```
+
