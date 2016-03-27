@@ -1,0 +1,46 @@
+---
+title: "Causes of death"
+author: "Russ Poldrack"
+date: "March 26, 2016"
+output: html_document
+---
+
+This workbook is meant to analyze the data from the Google Form for causes of death:
+
+https://docs.google.com/forms/d/1EVyKv6vtg4-gxLCREPXA4aHXbaAbVodDiC5NQMu0E2U/viewform#responses
+
+```{r}
+if (!require(psych)) install.packages('psych')
+library(psych)
+
+
+myFile <- '/Users/poldrack/Downloads/Causes of death survey-2.csv'
+myData  <- read.table(myFile,header=TRUE,sep=',')
+myData$Timestamp=NULL
+# from Table 11 of http://www.cdc.gov/nchs/data/nvsr/nvsr64/nvsr64_02.pdf
+true_vals=c(36.9,13.1,49.4,40.8,47.2,18.0,11.5,23.9,26.8,2.2,11.2,12.3,14.9,13.0,5.1,9.6,5.9)
+# obtained using get_trend_data.py/process_trend_data.py
+google_trend_vals=c(59.72,41.62,26.62,56.79,53.72,80.62,64.3,63.26,38.36,13.6,25.45,65.11,79.19,43.57,60.19,11,36.55)
+trueData=as.data.frame(true_vals)
+googleData=as.data.frame(google_trend_vals)
+rownames(trueData)=names(myData)
+rownames(googleData)=names(myData)
+```
+
+Now we plot the actual values and Google trend data against the average estimates of the group.
+
+```{r,echo=FALSE}
+mean_estimates=colMeans(myData,na.rm=TRUE)
+allData=cbind(trueData,mean_estimates,googleData)
+pairs.panels(allData)
+means_sort_order=order(mean_estimates,decreasing=TRUE)
+truedata_sort_order=order(true_vals,decreasing=TRUE)
+
+```
+
+Use a linear model to estimate the degree to which the estimates reflect either the true causes or the availability (as estimated using Google Trends):
+
+```{r,echo=FALSE}
+lm.result=lm(mean_estimates~true_vals+google_trend_vals,data=allData)
+summary(lm.result)
+```
