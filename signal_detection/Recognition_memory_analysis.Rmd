@@ -1,0 +1,100 @@
+---
+title: "Recognition_memory_analysis"
+author: "Russ Poldrack"
+date: "March 28, 2016"
+output: html_document
+---
+
+This notebook implements an analysis of the data collected using Google forms:
+
+```{r echo=FALSE,warnings=FALSE,errors=FALSE}
+data=read.table('/Users/poldrack/Dropbox/Documents/Teaching/Psych154_JDM/memory_exercise/Memory test.csv',sep=',',header=TRUE)
+data$Timestamp=NULL
+
+# 1=animals,2=clothing,3=furniture
+category=c(rep(1,10),rep(2,10),rep(3,10))
+
+# 1=old,0=new
+oldnew=as.data.frame(c(rep(0,5),rep(1,5),rep(0,5),rep(1,5),rep(0,5),rep(1,5)))
+
+
+```
+
+```{r echo=FALSE}
+# generate some data for testing
+
+get_trial_resp=function(o,offset=1){
+  i=runif(length(o))*3 + 1 + offset*o
+  i=round(i)
+  i[i>4]=4
+  return(i)
+}
+
+use_simulated_data=TRUE
+
+if (use_simulated_data) {
+  ratingdiff=1 # mean rating difference for old and new items
+  nsubs=36
+  data=c()
+  for (sub in 1:nsubs) {
+      d=get_trial_resp(oldnew[,1])
+      data=rbind(data,d)
+  }
+}
+
+```
+
+```{r echo=FALSE}
+# set up functions to compute dprime and beta
+# from http://www.pallier.org/ressources/aprime/aprime.pdf
+dprime <- function(hit,fa) { 
+  return(qnorm(hit) - qnorm(fa))
+}
+beta <- function(hit,fa) { 
+  zhr <- qnorm(hit)
+  zfar <- qnorm(fa)
+  return(exp(-zhr*zhr/2+zfar*zfar/2))
+}
+```
+
+Compute the ROC curve based
+
+```{r echo=FALSE}
+nold=sum(oldnew==1)
+nnew=sum(oldnew==0)
+nsubs=dim(data)[1]
+hits=matrix(NA,nrow=nsubs,ncol=3)
+falsealarms=matrix(NA,nrow=nsubs,ncol=3)
+dprime_est=array(NA,nsubs)
+beta_est=array(NA,nsubs)
+
+for (sub in 1:nsubs) {
+  for (c in 1:3) {
+    hits[sub,c]=sum(data[sub,oldnew==1]>c,na.rm = TRUE)
+    falsealarms[sub,c]=sum(data[sub,oldnew==0]>c,na.rm = TRUE)
+  }
+  dprime_est[sub]=dprime(hits[sub,2]/nold,falsealarms[sub,2]/nnew)
+  beta_est[sub]=beta(hits[sub,2]/nold,falsealarms[sub,2]/nnew)
+}
+dprime_est[is.infinite(dprime_est)]=NA
+beta_est[is.infinite(dprime_est)]=NA
+sdt=as.data.frame(dprime_est)
+sdt$beta_est=beta_est
+mean_hits=apply(hits,2,mean)/sum(oldnew==1)
+mean_falsealarms=apply(falsealarms,2,mean)/sum(oldnew==0)
+
+# compute piecewise linear AUC
+midpoints_x=(c(mean_falsealarms,0)+c(1,mean_falsealarms))/2
+midpoints_y=(c(mean_hits,0)+c(1,mean_hits))/2
+auc=t(c(1,mean_falsealarms)-c(mean_falsealarms,0))%*%midpoints_y
+
+par(mfrow=c(1,2))
+plot(mean_falsealarms,mean_hits,xlim=c(0,1),ylim=c(0,1),main=sprintf('AUC = %0.3f',auc))
+lines(c(0,1),c(0,1))
+lines(c(1,mean_falsealarms[1]),c(1,mean_hits[1]),col='red',lwd=2)
+lines(c(mean_falsealarms[1],mean_falsealarms[2]),c(mean_hits[1],mean_hits[2]),col='red',lwd=2)
+lines(c(mean_falsealarms[2],mean_falsealarms[3]),c(mean_hits[2],mean_hits[3]),col='red',lwd=2)
+lines(c(mean_falsealarms[3],0),c(mean_hits[3],0),col='red',lwd=2)
+
+hist(dprime_est)
+```
