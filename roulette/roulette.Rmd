@@ -67,7 +67,7 @@ multiplot(h1,h2)
 
 
 
-Now let's see how change in the utilty function and probability weighting function change the attractiveness of the bet. We use a prospect theory model with a power utility function and a one-parameter (Prelec) weighting function. Default values are from Table 11.3 in the Fox & Poldrack Neuroeconomics chapter
+Now let's see how change in the utilty function and probability weighting function change the attractiveness of the bet. We use a prospect theory model with a power utility function and a one-parameter (Prelec) weighting function. 
 
 ```{r, echo=FALSE,warnings=FALSE}
 pi = function(p,gamma) {
@@ -119,15 +119,15 @@ plot_weighting_function = function(gamma){
 
 ```{r, echo=FALSE,warnings=FALSE}
 inputPanel(
-
+# defaults from Fox & Poldack: lambda=2,aplha=0.88,gamma=0.74
   sliderInput("bet_value", label = "Amount of bet",
-              min = 1, max = 1000, value = 10, step = 1),
+              min = 1, max = 1000, value = 100, step = 1),
+ sliderInput("alpha", label = "alpha (curvature of value function)",
+              min = 0.0, max = 2.0, value = 1.0, step = 0.01),
   sliderInput("lambda", label = "lambda (loss aversion coefficient)",
-              min = 0.01, max = 6.0, value = 2.0, step = 0.01),
-  sliderInput("alpha", label = "alpha (curvature of value function)",
-              min = 0.0, max = 2.0, value = 0.88, step = 0.01),
-  sliderInput("gamma", label = "gamma (curvature of probability weighting function)",
-              min = 0.01, max = 0.99, value = 0.74, step = 0.01)
+              min = 0.01, max = 6.0, value = 1.0, step = 0.01),
+   sliderInput("gamma", label = "gamma (curvature of probability weighting function)",
+              min = 0.01, max = 0.99, value = 0.99, step = 0.01)
 )
 
 renderPlot({
