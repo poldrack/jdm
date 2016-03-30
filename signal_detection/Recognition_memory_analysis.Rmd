@@ -24,6 +24,8 @@ oldnew=as.data.frame(c(rep(0,5),rep(1,5),rep(0,5),rep(1,5),rep(0,5),rep(1,5)))
 # generate some data for testing
 
 get_trial_resp=function(o,offset=1){
+  # this is a dumb but easy way of generating responses
+  # dumb because it will be biased towards higher responses 
   i=runif(length(o))*3 + 1 + offset*o
   i=round(i)
   i[i>4]=4
@@ -31,13 +33,14 @@ get_trial_resp=function(o,offset=1){
 }
 
 use_simulated_data=TRUE
+ofst=0.25
 
 if (use_simulated_data) {
   ratingdiff=1 # mean rating difference for old and new items
   nsubs=36
   data=c()
   for (sub in 1:nsubs) {
-      d=get_trial_resp(oldnew[,1])
+      d=get_trial_resp(oldnew[,1],ofst)
       data=rbind(data,d)
   }
 }
@@ -89,12 +92,13 @@ midpoints_y=(c(mean_hits,0)+c(1,mean_hits))/2
 auc=t(c(1,mean_falsealarms)-c(mean_falsealarms,0))%*%midpoints_y
 
 par(mfrow=c(1,2))
+#pdf(file=sprintf('roc_offset%f.pdf',ofst))
 plot(mean_falsealarms,mean_hits,xlim=c(0,1),ylim=c(0,1),main=sprintf('AUC = %0.3f',auc))
 lines(c(0,1),c(0,1))
 lines(c(1,mean_falsealarms[1]),c(1,mean_hits[1]),col='red',lwd=2)
 lines(c(mean_falsealarms[1],mean_falsealarms[2]),c(mean_hits[1],mean_hits[2]),col='red',lwd=2)
 lines(c(mean_falsealarms[2],mean_falsealarms[3]),c(mean_hits[2],mean_hits[3]),col='red',lwd=2)
 lines(c(mean_falsealarms[3],0),c(mean_hits[3],0),col='red',lwd=2)
-
+#dev.off()
 hist(dprime_est)
 ```
