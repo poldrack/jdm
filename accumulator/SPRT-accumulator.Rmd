@@ -1,0 +1,76 @@
+---
+title: "SPRT example"
+author: "Russ Poldrack"
+date: "February 27, 2016"
+output: html_document
+runtime: shiny
+---
+
+This code generates an example of a single run of Wald's sequential probability ratio test (SPRT). 
+
+
+```{r, echo = FALSE,warnings=FALSE}
+
+gauss_LLR <- function(xbar, sigma=1,mu=c(0,1)) {
+return(log(dnorm(xbar,mean=mu[1],sd=sigma)/dnorm(xbar,mean=mu[2],sd=sigma)))
+}
+
+```
+
+```{r}
+
+```
+
+```{r echo=FALSE}
+library(shiny)
+
+ui <- fluidPage(
+  actionButton("sample", label = "sample"),
+  hr(),
+  plotOutput("plot",height=300,width=400)
+)
+
+server <- function(input, output){
+  alpha=0.05
+  beta=1.-alpha # likelihood of deciding B when B is true
+  
+  A=log(beta/alpha)
+  B=log((1.-beta)/(1.-alpha))
+  
+  v <- reactiveValues(S=c(),samples=c(),counter=NA,offset=.5,done=0)
+
+
+    observeEvent(input$sample, {
+      if (sum(v$S)<A & sum(v$S)>B) {
+        s=rnorm(1,mean=v$offset)
+        v$samples=c(v$samples,s)
+        llr=gauss_LLR(s,mu=c(v$offset,0))
+        v$S=c(v$S,llr)
+      }
+    })
+
+    output$plot <- renderPlot({
+      if (length(v$S)>0) {
+        par(mfrow=c(1,2),pin=c(2,2))
+        yvals=seq(-4,6,0.01)
+        plot(dnorm(yvals),yvals,type='l',col='red',ylim=c(-4,6),ylab='value',
+             xlab='density',main=sprintf('LLR = %0.3f',tail(v$S,1)),lwd=2)
+        lines(dnorm(yvals,mean=v$offset),yvals,type='l',col='blue',lwd=2)
+        legend('topright',legend=c('noise','signal'),col=c('red','blue'),lwd=c(2,2))
+        points(dnorm(tail(v$samples,1)),tail(v$samples,1),col='red')
+        points(dnorm(tail(v$samples,1),mean=v$offset),tail(v$samples,1),col='blue')
+        plot(cumsum(v$S),type='l',xlim=c(0,50),ylim=c(B,A),xlab='trial',ylab='sum LLR',lwd=2)
+        if (sum(v$S)>A | sum(v$S)<B ) {
+          v$counter=length(v$S)
+          print(sprintf('DONE: %d trials',v$counter))
+          title(main=sprintf('DONE: %d trials',v$counter))
+          }
+      }
+    })
+
+
+}
+shinyApp(ui, server)
+
+```
+
