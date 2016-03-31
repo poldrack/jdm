@@ -13,7 +13,7 @@ This document provides an example of the problem of "gamblers ruin", which demon
 inputPanel(
 
   sliderInput("pwinexp", label = "Probability of winning the lottery (10e-x)",
-              min = 1, max = 9, value = 3, step = 1),
+              min = 1, max = 9, value = 4, step = 1),
   sliderInput("costperplay", label = "Cost to play the lottery",
               min = 1, max = 10, value = 1, step = 1),
   sliderInput("nplayers", label = "Number of players",
@@ -21,7 +21,7 @@ inputPanel(
   
 )
 
-play_lottery=function(pwin,costperplay,nplayers,maxplays=100000){
+play_lottery=function(pwin,costperplay,nplayers,maxplays=10000){
   prewinloss=c()
   nwinners=0
   for (i in 1:nplayers) {
