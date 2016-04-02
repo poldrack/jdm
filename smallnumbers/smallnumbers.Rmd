@@ -1,0 +1,50 @@
+---
+title: "Law of small numbers"
+author: "Russ Poldrack"
+date: "April 2, 2016"
+output: html_document
+runtime: shiny
+---
+
+This notebook demonstrates the variabilty of small samples, as discussed in the 1971 Tversky & Kahneman paper on the law of small numbers.
+
+```{r, echo = FALSE,warnings=FALSE,message=FALSE}
+
+inputPanel(
+      sliderInput("b1", "Hospital 1: # births",
+                  min=10, max=200, value=45,step=1),
+    sliderInput("b2", "Hospital 2: # births:",
+                  min=10, max=200, value=15,step=1),
+    sliderInput("cutoff", "Proportion cutoff:",
+                  min=0.5, max=0.8, value=0.6,step=0.05)
+    )
+
+dataInput <- reactive({
+  ctr=c(0,0)
+  n=matrix(NA,nrow=365,ncol=2)
+  for (i in 1:365) {
+    n[i,1]=mean(runif(input$b1)>0.5)
+    n[i,2]=mean(runif(input$b2)>0.5)
+    if (n[i,1]>input$cutoff) ctr[1]=ctr[1]+1
+    if (n[i,2]>input$cutoff) ctr[2]=ctr[2]+1
+    
+  }
+  return(list('n'=n,'ctr'=ctr))
+})
+
+renderPlot({
+  d=dataInput()
+  breaks=seq(0,1,0.1)
+  h1=hist(d$n[,1],breaks=breaks,freq=FALSE)
+  h2=hist(d$n[,2],breaks=breaks,freq=FALSE)
+  plot(breaks[1:(length(breaks)-1)],h1$counts/sum(h1$counts),type='l',lwd=2,col='blue',
+       xlab='Proportion male births',ylab='Relative frequency')
+  lines(breaks[1:(length(breaks)-1)],h2$counts/sum(h2$counts),lwd=2,col='red')
+  legend('topleft',legend=c('Hospital 1','Hospital 2'),lwd=c(2,2),col=c('blue','red'))
+  lines(c(input$cutoff,input$cutoff),c(0,1),col='black',lwd=2)
+})
+
+renderTable(data.frame("Days exceeding cutoff"=dataInput()$ctr,row.names=c('Hospital 1','Hospital 2')) )
+
+
+```
