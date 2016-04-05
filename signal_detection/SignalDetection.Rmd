@@ -9,7 +9,7 @@ runtime: shiny
 This notebook is meant to introduce the concepts behind signal detection theory.  On the left we plot the underlying theoretical distributions for signal and noise. On the right we plot a receiver operating characteristic (ROC) curve, which plots the level of hits against the level of false alarms. We also compute the area under the curve for the ROC, which is a measure of the discriminability of signal and noise.
 
 ```{r, echo = FALSE,warnings=FALSE,message=FALSE}
-require(MESS)
+if (!require(MESS)) install.packages('MESS')
 inputPanel(
       sliderInput("dprime", "d-prime:",
                   min=0, max=5, value=1,step=0.1),
