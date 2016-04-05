@@ -54,7 +54,7 @@ server <- function(input, output){
         par(mfrow=c(1,2),pin=c(2,2))
         yvals=seq(-4,6,0.01)
         plot(dnorm(yvals),yvals,type='l',col='red',ylim=c(-4,6),ylab='value',
-             xlab='density',main=sprintf('LLR = %0.3f',tail(v$S,1)),lwd=2)
+             xlab='density',main=sprintf('sample = %0.3f,LLR = %0.3f',tail(v$samples,1),tail(v$S,1)),lwd=2)
         lines(dnorm(yvals,mean=v$offset),yvals,type='l',col='blue',lwd=2)
         legend('topright',legend=c('noise','signal'),col=c('red','blue'),lwd=c(2,2))
         points(dnorm(tail(v$samples,1)),tail(v$samples,1),col='red')
