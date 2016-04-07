@@ -11,7 +11,7 @@ This code generates an example of Wald's sequential probability ratio test (SPRT
 *NOTE:* There will be a relatively long delay initially as well as after you change the slider settings, because the simulation must be re-run each time.
 
 ```{r, echo = FALSE,warnings=FALSE}
-require(ggplot2)
+if (!require(ggplot2)) install.packages('ggplot2')
 source('multiplot.R')
 
 gauss_LLR <- function(xbar, sigma=1,mu=c(1,-1)) {
