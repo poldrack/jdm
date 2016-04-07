@@ -20,12 +20,12 @@ actionButton("bD", label = "Bandit 4"),
 )
 
 server <- function(input, output){
-  v <- reactiveValues(pvals=c(0.6,0.8,0.2,0.4),reward=0,counter=0,choices=c())
+  v <- reactiveValues(pvals=c(0.6,0.8,0.2,0.4),reward=0,counter=0,choices=c(),maxtrials=50)
 
     observeEvent(input$bA, {
       v$choices=c(v$choices,1)
       v$counter=v$counter+1
-      if (runif(1) < v$pvals[1] && v$counter<101) {
+      if (runif(1) < v$pvals[1] && v$counter<v$maxtrials) {
             v$reward=v$reward + 1
       }
     })
@@ -33,36 +33,36 @@ server <- function(input, output){
     observeEvent(input$bB, {
       v$choices=c(v$choices,2)
       v$counter=v$counter+1
-      if (runif(1) < v$pvals[2] && v$counter<101) {
+      if (runif(1) < v$pvals[2] && v$counter<v$maxtrials) {
             v$reward=v$reward + 1
       }
     })
     observeEvent(input$bC, {
        v$choices=c(v$choices,3)
      v$counter=v$counter+1
-      if (runif(1) < v$pvals[3] && v$counter<101) {
+      if (runif(1) < v$pvals[3] && v$counter<v$maxtrials) {
             v$reward=v$reward + 1
       }
     })
     observeEvent(input$bD, {
        v$choices=c(v$choices,4)
      v$counter=v$counter+1
-      if (runif(1) < v$pvals[4] && v$counter<101) {
+      if (runif(1) < v$pvals[4] && v$counter<v$maxtrials) {
             v$reward=v$reward + 1
       }
     })
    
     output$plot <- renderPlot({
-      maxtrials=20
-      if(v$counter<(maxtrials+1)) {
-        barplot(c(v$reward),ylim=c(0,maxtrials))
+      if(v$counter<(v$maxtrials+1)) {
+        par(mfrow=c(1,2))
+        barplot(c(v$reward),ylim=c(0,v$maxtrials))
       } else {
-        par(mfrow=c(1,2),pin=c(2,2))
-        barplot(c(v$reward),ylim=c(0,maxtrials),main=sprintf('Done! Total reward after %d trials: %d',maxtrials,v$reward))
+        par(mfrow=c(1,2))
+        barplot(c(v$reward),ylim=c(0,v$maxtrials),main=sprintf('Done! Total reward: %d',v$reward))
         plot(v$pvals[v$choices],ylim=c(0,1))
         
       }
-    })
+    },height = 300, width = 600)
 
 
 }
