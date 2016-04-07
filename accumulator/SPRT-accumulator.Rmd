@@ -59,7 +59,7 @@ server <- function(input, output){
         legend('topright',legend=c('noise','signal'),col=c('red','blue'),lwd=c(2,2))
         points(dnorm(tail(v$samples,1)),tail(v$samples,1),col='red')
         points(dnorm(tail(v$samples,1),mean=v$offset),tail(v$samples,1),col='blue')
-        plot(cumsum(v$S),type='l',xlim=c(0,50),ylim=c(B,A),xlab='trial',ylab='sum LLR',lwd=2)
+        plot(cumsum(v$S),type='l',xlim=c(0,max(length(v$samples),50)),ylim=c(B,A),xlab='trial',ylab='sum LLR',lwd=2)
         if (sum(v$S)>A | sum(v$S)<B ) {
           v$counter=length(v$S)
           print(sprintf('DONE: %d trials',v$counter))
