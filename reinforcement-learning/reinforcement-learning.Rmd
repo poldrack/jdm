@@ -65,7 +65,8 @@ plot_learning=function(pA,learning_rate,temperature,plotQuantity){
     block_optimal[i]=mean(dataToPlot[block_trials]==round(pA))
   }
   plot(block_optimal,type='l',xlab=sprintf('trial blocks (%d trials/block)',blocksize),
-       ylab=ylabel)
+       ylab=ylabel,ylim=c(0,1))
+  lines(c(0,nblocks),c(0.5,0.5),lty='dotted')
   tp=seq(1,length(block_optimal))
   block_optimal_loess = loess(y ~ x, span=0.75, data.frame(x=tp, y=block_optimal))
   lines(predict(block_optimal_loess, data.frame(x=tp)),col='red',lwd=2)
