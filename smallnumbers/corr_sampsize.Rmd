@@ -1,0 +1,47 @@
+---
+title: "correlation stability"
+author: "Russ Poldrack"
+date: "April 13, 2016"
+output: html_document
+---
+
+
+This notebook gives an example (after Schönbrodt et al., 2013) of how the correlation stabilizes as a function of sample size
+
+```{r}
+minn=16
+maxn=500
+nruns=100
+corr=0.25
+
+library(MASS)
+Sigma <- matrix(c(1,corr,corr,1),2,2)
+
+corrs=matrix(NA,ncol=maxn,nrow=nruns)
+confint=matrix(NA,ncol=maxn,nrow=2)
+for (r in 1:nruns) {
+  d=mvrnorm(n=maxn,c(0,0),Sigma)
+  for (i in minn:maxn) {
+    corrs[r,i]=cor(d[1:i,])[1,2]
+  }
+  if (r==1) plot(c(minn:maxn),corrs[r,minn:maxn],type='l',ylim=c(-1,1),ylab='Estimated correlation',xlab='sample size',lwd=0.5,col='gray')
+  else lines(c(minn:maxn),corrs[r,minn:maxn],type='l',lwd=0.5,col='gray')
+}
+
+for (i in minn:maxn) {
+  confint[,i]=quantile(corrs[,i],c(0.05,0.95))
+}
+
+lines(c(minn,maxn),c(corr,corr),type='l',col='red',lwd=2)
+lines(c(minn:maxn),confint[1,minn:maxn],type='l',col='blue',lwd=3)
+lines(c(minn:maxn),confint[2,minn:maxn],type='l',col='blue',lwd=3)
+legend('bottomright',c('true value','95% intervals'),lwd=c(2,2),col=c('red','blue'))
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
