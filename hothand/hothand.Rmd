@@ -51,7 +51,7 @@ Generate a large number of sequences, and plot the histogram of run lengths
 
 ```{r echo=FALSE}
 nruns=1000
-nshots=25
+nshots=10
 runlengths_rand=c()
 data_rand=matrix(nrow=nruns,ncol=nshots)
 
@@ -158,7 +158,7 @@ for (i in 1:nruns){
   probtest_switch=c(probtest_switch,sum(h1 & h2)/sum(h1))
 }
 
-estimates=c(mean(probtest_rand), mean(probtest_ar,na.rm=TRUE),mean(probtest_switch))
+estimates=c(mean(probtest_rand,na.rm=TRUE), mean(probtest_ar,na.rm=TRUE),mean(probtest_switch,na.rm=TRUE))
 est_df=as.data.frame(estimates,row.names=c('random','AR','switching'))
 kable(est_df)
 
