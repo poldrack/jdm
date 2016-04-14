@@ -50,7 +50,7 @@ mk_random=function(nshots,psuccess=0.5,ar=0.0,pswitch=0){
 Generate a large number of sequences, and plot the histogram of run lengths
 
 ```{r echo=FALSE}
-nruns=10000
+nruns=1000
 nshots=25
 runlengths_rand=c()
 data_rand=matrix(nrow=nruns,ncol=nshots)
@@ -129,4 +129,38 @@ sigp=c(mean(runstest_rand<0.05,na.rm=TRUE),
        mean(runstest_switch<0.05,na.rm=TRUE))
 sigp_df=as.data.frame(sigp,row.names=c('random','AR','switching'))
 kable(sigp_df)
+```
+
+Now let's use the conditional probability approach (discussed here: http://andrewgelman.com/2015/07/09/hey-guess-what-there-really-is-a-hot-hand/)
+
+```{r, echo=FALSE}
+probtest_rand=c()
+
+for (i in 1:nruns){
+  h1=data_rand[i,1:(nshots-1)]
+  h2=data_rand[i,2:nshots]
+  probtest_rand=c(probtest_rand,sum(h1 & h2)/sum(h1))
+}
+
+probtest_ar=c()
+
+for (i in 1:nruns){
+  h1=data_ar[i,1:(nshots-1)]
+  h2=data_ar[i,2:nshots]
+  probtest_ar=c(probtest_ar,sum(h1 & h2)/sum(h1))
+}
+
+probtest_switch=c()
+
+for (i in 1:nruns){
+  h1=data_switch[i,1:(nshots-1)]
+  h2=data_switch[i,2:nshots]
+  probtest_switch=c(probtest_switch,sum(h1 & h2)/sum(h1))
+}
+
+estimates=c(mean(probtest_rand), mean(probtest_ar,na.rm=TRUE),mean(probtest_switch))
+est_df=as.data.frame(estimates,row.names=c('random','AR','switching'))
+kable(est_df)
+
+
 ```
