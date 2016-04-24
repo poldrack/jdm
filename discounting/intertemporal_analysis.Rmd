@@ -1,0 +1,64 @@
+---
+title: "intertemporal_analysis"
+author: "Russ Poldrack"
+date: "April 24, 2016"
+output: html_document
+---
+
+This notebook analyzes data from the intertemporal choice quiz at http://goo.gl/forms/voYsUhjYKO
+
+```{r}
+infile='Intertemporal choice.csv'
+d=read.table(infile,header=TRUE,sep=',')
+tdata=cbind(rep(15,dim(d)[1]),d[,2:4])
+
+names(tdata)=c('d0','d30','d360','d3600')
+tmedian=apply(tdata,2,median)
+delays=c(0,30,360,3600)
+
+# function to return 
+
+# function to return discounted value
+delayed_val_hyp=function(V,D,k){
+  return(V*(1+k*D))
+}
+disc_val_hyp=function(A,D,k){
+  return(A/(1+k*D))
+}
+hyper_disc=function(D,k){
+  return(delayed_val_hyp(15,D,k))
+}
+
+fit <- nls(tmedian~hyper_disc(delays,k), start=list(k=0.01))
+k_est=coefficients(fit)[1]
+plot(seq(0,3600),disc_val_hyp(15,seq(0,3600),k_est)/15,type='l',
+     ylab='Discounted value (proportion)',xlab='Delay (days)',
+     main=sprintf('Median response (k=%0.3f)',k_est),ylim=c(0,1))
+
+# plot median data points as proportion of current value
+points(delays,15/tmedian)
+
+```
+
+Now let's plot the curves for each individual
+
+```{r}
+
+nsubs=dim(tdata)[1]
+sub_k=c()
+
+plot(seq(0,3600),disc_val_hyp(15,seq(0,3600),k_est)/15,type='l',
+     ylab='Discounted value (proportion)',xlab='Delay (days)',
+     main='Individuals',ylim=c(0,1),col='blue',lwd=2)
+
+for (i in 1:nsubs) {
+  df=as.data.frame(cbind(t(tdata[i,]),delays))
+  names(df)[1]='val'
+  fit <- nls(val~hyper_disc(delays,k), data=df,start=list(k=k_est))
+  sub_k=c(sub_k,coefficients(fit)[1])
+  lines(seq(0,3600),disc_val_hyp(15,seq(0,3600),coefficients(fit)[1])/15)
+}
+
+```
+
+
