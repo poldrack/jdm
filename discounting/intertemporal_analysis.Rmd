@@ -7,7 +7,7 @@ output: html_document
 
 This notebook analyzes data from the intertemporal choice quiz at http://goo.gl/forms/voYsUhjYKO
 
-```{r}
+```{r,echo=FALSE}
 infile='Intertemporal choice.csv'
 d=read.table(infile,header=TRUE,sep=',')
 tdata=cbind(rep(15,dim(d)[1]),d[,2:4])
@@ -22,43 +22,70 @@ delays=c(0,30,360,3600)
 delayed_val_hyp=function(V,D,k){
   return(V*(1+k*D))
 }
+delayed_val_exp=function(V,D,k){
+  return(V/exp(-k*D))
+}
+
 disc_val_hyp=function(A,D,k){
   return(A/(1+k*D))
 }
+disc_val_exp=function(A,D,k){
+  return(A*exp(-k*D))
+}
+
 hyper_disc=function(D,k){
   return(delayed_val_hyp(15,D,k))
 }
+exp_disc=function(D,k){
+  return(delayed_val_exp(15,D,k))
+}
 
-fit <- nls(tmedian~hyper_disc(delays,k), start=list(k=0.01))
-k_est=coefficients(fit)[1]
-plot(seq(0,3600),disc_val_hyp(15,seq(0,3600),k_est)/15,type='l',
+fit_hyp <- nls(tmedian~hyper_disc(delays,k), start=list(k=0.01))
+fit_exp <- nls(tmedian~exp_disc(delays,k), start=list(k=0.01))
+k_est_hyp=coefficients(fit_hyp)[1]
+rmse_hyp=fit_hyp$m$resid()%*%fit_hyp$m$resid()
+k_est_exp=coefficients(fit_exp)[1]
+rmse_exp=fit_exp$m$resid()%*%fit_exp$m$resid()
+plot(seq(0,3600),disc_val_hyp(15,seq(0,3600),k_est_hyp)/15,type='l',
      ylab='Discounted value (proportion)',xlab='Delay (days)',
-     main=sprintf('Median response (k=%0.3f)',k_est),ylim=c(0,1))
-
+     main='Median response',ylim=c(0,1),col='blue')
+lines(seq(0,3600),disc_val_exp(15,seq(0,3600),k_est_exp)/15,col='red')
 # plot median data points as proportion of current value
+legend('topright',c(sprintf('hyperbolic (k=%0.3f, RMSE=%0.1f)',k_est_hyp,rmse_hyp),sprintf('exponential (k=%0.3f, RMSE=%0.1f)',k_est_exp,rmse_exp)),col=c('blue','red'),lwd=c(2,2))
 points(delays,15/tmedian)
 
 ```
 
-Now let's plot the curves for each individual
+Now let's plot the hyperbolic model curves for each individual
 
-```{r}
+```{r,echo=FALSE}
 
 nsubs=dim(tdata)[1]
 sub_k=c()
 
-plot(seq(0,3600),disc_val_hyp(15,seq(0,3600),k_est)/15,type='l',
+plot(seq(0,3600),disc_val_hyp(15,seq(0,3600),k_est_hyp)/15,type='l',
      ylab='Discounted value (proportion)',xlab='Delay (days)',
-     main='Individuals',ylim=c(0,1),col='blue',lwd=2)
+     main='Individuals',ylim=c(0,1),col='blue',lwd=2,lty=3)
 
+rmse=c()
 for (i in 1:nsubs) {
   df=as.data.frame(cbind(t(tdata[i,]),delays))
   names(df)[1]='val'
-  fit <- nls(val~hyper_disc(delays,k), data=df,start=list(k=k_est))
+  fit <- nls(val~hyper_disc(delays,k), data=df,start=list(k=k_est_hyp))
+  fit_exp <- nls(val~exp_disc(delays,k), data=df,start=list(k=k_est_hyp))
+  rmse_exp=fit_exp$m$resid()%*%fit_exp$m$resid()
+  rmse_hyp=fit$m$resid()%*%fit$m$resid()
+
+  rmse=rbind(rmse,c(rmse_exp,rmse_hyp))
   sub_k=c(sub_k,coefficients(fit)[1])
   lines(seq(0,3600),disc_val_hyp(15,seq(0,3600),coefficients(fit)[1])/15)
+  points(delays,15/tdata[i,],pch=20,cex=0.5)
+
 }
 
+rmse_diff=rmse[,1]-rmse[,2]
+p_hyp_win=sum(rmse_diff>0)/nsubs
+print(sprintf('Proportion of subjects fit better by hyperbolic: %0.2f',p_hyp_win))
 ```
 
 
